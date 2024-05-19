@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime
 from sqlalchemy import ForeignKey, TIMESTAMP
 from sqlalchemy.orm import (
@@ -7,7 +8,7 @@ from sqlalchemy.orm import (
     relationship,
     sessionmaker,
 )
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession
 import os
 from celery import Celery
 from config import async_engine
@@ -16,7 +17,7 @@ from config import async_engine
 documents_dir = "documents"
 os.makedirs(documents_dir, exist_ok=True)
 
-# Настройка базы данных
+# Database session factory
 AsyncSessionLocal = sessionmaker(
     bind=async_engine, class_=AsyncSession, expire_on_commit=False
 )
@@ -49,9 +50,5 @@ async def init_models():
         await conn.run_sync(Base.metadata.create_all)
 
 
-import asyncio
-
-asyncio.run(init_models())
-
-# Настройка Celery
+# Setting up Celery
 celery_app = Celery("tasks", broker="pyamqp://guest@localhost//", backend="rpc://")
