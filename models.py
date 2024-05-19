@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import create_engine, String, ForeignKey, TIMESTAMP
+from sqlalchemy import ForeignKey, TIMESTAMP
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
@@ -10,14 +10,13 @@ from sqlalchemy.orm import (
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 import os
 from celery import Celery
-from config import connection_string
+from config import async_engine
 
 # Настройки
 documents_dir = "documents"
 os.makedirs(documents_dir, exist_ok=True)
 
 # Настройка базы данных
-async_engine = create_async_engine(connection_string, echo=True)
 AsyncSessionLocal = sessionmaker(
     bind=async_engine, class_=AsyncSession, expire_on_commit=False
 )

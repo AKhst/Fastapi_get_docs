@@ -1,4 +1,6 @@
 import os
+import shutil
+
 from fastapi import FastAPI
 from pydantic import BaseModel
 from starlette.responses import JSONResponse
