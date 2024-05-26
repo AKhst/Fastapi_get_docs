@@ -5,7 +5,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from app.models import documents_dir, AsyncSessionLocal, Document, init_models
+from src.models import documents_dir, AsyncSessionLocal, Document, init_models
 
 app = FastAPI()
 

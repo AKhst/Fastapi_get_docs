@@ -10,7 +10,7 @@ from sqlalchemy.orm import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 from celery import Celery
-from app.config import async_engine
+from src.config import async_engine
 
 # Настройки
 documents_dir = "../documents"
