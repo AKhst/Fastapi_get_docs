@@ -1,4 +1,4 @@
-import asyncio
+import os
 from datetime import datetime
 from sqlalchemy import ForeignKey, TIMESTAMP
 from sqlalchemy.orm import (
@@ -9,12 +9,11 @@ from sqlalchemy.orm import (
     sessionmaker,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
-import os
 from celery import Celery
-from config import async_engine
+from app.config import async_engine
 
 # Настройки
-documents_dir = "documents"
+documents_dir = "../documents"
 os.makedirs(documents_dir, exist_ok=True)
 
 # Database session factory
