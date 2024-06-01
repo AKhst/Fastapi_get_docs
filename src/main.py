@@ -1,19 +1,36 @@
 import os
 import shutil
 import uuid
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from src.models import documents_dir, AsyncSessionLocal, Document, init_models
 
-app = FastAPI()
 
-
-# Функция, которая будет вызвана при запуске приложения
-@app.on_event("startup")
-async def startup_event():
+# Функция для инициализации приложения при запуске
+async def initialize_app():
     await init_models()
+
+
+# Функция для завершения работы приложения при остановке
+async def shutdown_app():
+    pass  # Можно добавить необходимые действия при завершении работы приложения, если такие есть
+
+
+# Контекстный менеджер для выполнения действий при старте и остановке приложения
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+        await initialize_app()  # Вызываем функцию для инициализации приложения
+        yield
+    finally:
+        await shutdown_app()  # Вызываем функцию для завершения работы приложения
+
+
+# Используем контекстный менеджер для выполнения действий при старте и остановке приложения
+app = FastAPI(lifespan=lifespan)
 
 
 # Dependency to get DB session
