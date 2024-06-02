@@ -6,7 +6,14 @@ from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from src.models import documents_dir, AsyncSessionLocal, Document, init_models
+from src.models import (
+    documents_dir,
+    AsyncSessionLocal,
+    Document,
+    init_models,
+    DocumentsText,
+)
+from src.tasks import celery, extract_text_from_image
 
 
 # Функция для инициализации приложения при запуске
@@ -84,3 +91,32 @@ async def delete_doc(doc_id: int, db: AsyncSession = Depends(get_db)):
     return JSONResponse(
         status_code=200, content={"detail": "Document deleted successfully"}
     )
+
+
+@app.post("/doc_analyse/{image_id}")
+async def doc_analyse(image_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Document).where(Document.id == image_id))
+    document = result.scalars().first()
+
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    task = extract_text_from_image.delay(document.path, image_id)
+    return {
+        "message": "Text extraction task submitted",
+        "task_id": task.id,
+        "document_path": document.path,
+    }
+
+
+@app.get("/get_text")
+async def get_text(doc_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(DocumentsText).where(DocumentsText.id_doc == doc_id)
+    )
+    document_text = result.scalars().first()
+
+    if document_text is None:
+        raise HTTPException(status_code=404, detail="Document text not found")
+
+    return JSONResponse(status_code=200, content={"text": document_text.text})

@@ -9,11 +9,11 @@ from sqlalchemy.orm import (
     sessionmaker,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
-from celery import Celery
 from src.config import async_engine
 
 # Настройки
-documents_dir = "../documents"
+documents_dir = "/Users/admin/PycharmProjects/Fastapi_get_docs/documents"
+
 os.makedirs(documents_dir, exist_ok=True)
 
 # Database session factory
@@ -47,7 +47,3 @@ class DocumentsText(Base):
 async def init_models():
     async with async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-
-
-# Setting up Celery
-celery_app = Celery("tasks", broker="pyamqp://guest@localhost//", backend="rpc://")
