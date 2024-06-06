@@ -13,7 +13,7 @@ from src.models import (
     init_models,
     DocumentsText,
 )
-from src.tasks import celery, extract_text_from_image
+from src.tasks import extract_text_from_image
 
 
 # Функция для инициализации приложения при запуске
