@@ -14,6 +14,12 @@ from src.models import (
     DocumentsText,
 )
 from src.tasks import extract_text_from_image
+from src.schemas import (
+    DocumentDelete,
+    DocumentAnalyse,
+    ALLOWED_EXTENSIONS,
+    DocumentBase,
+)
 
 
 # Функция для инициализации приложения при запуске
@@ -49,7 +55,10 @@ async def get_db() -> AsyncSession:
 @app.post("/upload_doc")
 async def upload_doc(file: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
     # Generate a unique filename
-    file_extension = file.filename.split(".")[-1]
+    file_extension = file.filename.split(".")[-1].lower()
+    if file_extension not in ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail="Unsupported file format")
+
     filename = f"{uuid.uuid4()}.{file_extension}"
     file_path = os.path.join(documents_dir, filename)
 
@@ -69,7 +78,8 @@ async def upload_doc(file: UploadFile = File(...), db: AsyncSession = Depends(ge
 
 
 @app.delete("/doc_delete")
-async def delete_doc(doc_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_doc(request: DocumentDelete, db: AsyncSession = Depends(get_db)):
+    doc_id = request.doc_id
     # Получение документа из базы данных по id
     result = await db.execute(select(Document).where(Document.id == doc_id))
     document = result.scalars().first()
@@ -94,7 +104,8 @@ async def delete_doc(doc_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @app.post("/doc_analyse/{image_id}")
-async def doc_analyse(image_id: int, db: AsyncSession = Depends(get_db)):
+async def doc_analyse(request: DocumentAnalyse, db: AsyncSession = Depends(get_db)):
+    image_id = request.image_id
     result = await db.execute(select(Document).where(Document.id == image_id))
     document = result.scalars().first()
 
@@ -110,7 +121,8 @@ async def doc_analyse(image_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @app.get("/get_text")
-async def get_text(doc_id: int, db: AsyncSession = Depends(get_db)):
+async def get_text(request: DocumentBase, db: AsyncSession = Depends(get_db)):
+    doc_id = request.doc_id
     result = await db.execute(
         select(DocumentsText).where(DocumentsText.id_doc == doc_id)
     )

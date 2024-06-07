@@ -1,30 +1,29 @@
-# Используйте официальный образ Python в качестве базового образа
 FROM python:3.12-slim
 
-# Установите необходимые системные зависимости
-RUN apt-get update && apt-get install -y \
-    tesseract-ocr \
-    tesseract-ocr-rus \
-    wget \
-    && apt-get clean
+RUN mkdir /fastapi_app
+# Устанавливаем рабочую директорию в контейнере
+WORKDIR /fastapi_app
 
-# Установите Poetry
-RUN pip install poetry
+COPY . .
+# Устанавливаем зависимости
+RUN pip install poetry && \
+    poetry config virtualenvs.create false && \
+    poetry install --no-interaction --no-ansi
 
-# Создайте рабочую директорию
-WORKDIR /app
+# Устанавливаем Tesseract
+RUN apt-get update && apt-get install -y tesseract-ocr tesseract-ocr-rus
 
-# Скопируйте файлы pyproject.toml и poetry.lock (если он есть)
-COPY pyproject.toml poetry.lock* /app/
+# Устанавливаем переменную окружения TESSDATA_PREFIX
+ENV TESSDATA_PREFIX /usr/share/tesseract-ocr/4.00/tessdata/
 
-# Установите зависимости проекта
-RUN poetry install --no-root
+# Устанавливаем путь к Alembic в переменную PATH
+ENV PATH="${PATH}:/app/alembic"
 
-# Скопируйте оставшийся исходный код проекта
-COPY . /app
+# Выполняем миграции перед запуском приложения
+RUN poetry run alembic upgrade head
 
-# Экспортируйте переменную окружения для Tesseract
-ENV TESSDATA_PREFIX=/usr/share/tesseract-ocr/4.00/tessdata/
+# Открываем порт для приложения
+EXPOSE 8000
 
-# Команда для запуска приложения
+# Команда по умолчанию для запуска FastAPI приложения
 CMD ["poetry", "run", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
