@@ -141,12 +141,20 @@ async def doc_analyse(request: DocumentAnalyse, db: AsyncSession = Depends(get_d
 
 @app.get("/get_text")
 async def get_text(doc_id: int, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
-        select(DocumentsText).where(DocumentsText.id_doc == doc_id)
-    )
-    document_text = result.scalars().first()
+    try:
+        result = await db.execute(
+            select(DocumentsText).where(DocumentsText.id_doc == doc_id)
+        )
+        document_text = result.scalars().first()
 
-    if document_text is None:
-        raise HTTPException(status_code=404, detail="Document text not found")
+        if document_text is None:
+            logger.error("Document text not found")
+            raise HTTPException(status_code=404, detail="Document text not found")
 
-    return JSONResponse(status_code=200, content={"text": document_text.text})
+        return JSONResponse(status_code=200, content={"text": document_text.text})
+    except Exception as e:
+        logger.error(f"Error getting document text: {e}")
+        raise
+    finally:
+        await db.close()
+        logger.info("Session closed")
