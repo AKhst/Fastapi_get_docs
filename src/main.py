@@ -46,6 +46,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
+
 # Dependency to get DB session
 async def get_db() -> AsyncSession:
     async with AsyncSessionLocal() as session:
@@ -132,3 +133,5 @@ async def get_text(request: DocumentBase, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Document text not found")
 
     return JSONResponse(status_code=200, content={"text": document_text.text})
+
+
