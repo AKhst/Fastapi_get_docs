@@ -13,7 +13,7 @@ from src.models import (
     init_models,
     DocumentsText,
 )
-from src.tasks import extract_text_from_image
+from src.tasks import extract_text_from_image, logger
 from src.schemas import (
     DocumentDelete,
     DocumentAnalyse,
@@ -105,19 +105,38 @@ async def delete_doc(request: DocumentDelete, db: AsyncSession = Depends(get_db)
 
 @app.post("/doc_analyse/{image_id}")
 async def doc_analyse(request: DocumentAnalyse, db: AsyncSession = Depends(get_db)):
-    image_id = request.image_id
-    result = await db.execute(select(Document).where(Document.id == image_id))
-    document = result.scalars().first()
+    try:
+        image_id = request.image_id
+        logger.info(f"Received request to analyze document with image_id: {image_id}")
 
-    if document is None:
-        raise HTTPException(status_code=404, detail="Document not found")
+        # Запрос к базе данных для поиска документа с указанным image_id
+        result = await db.execute(select(Document).where(Document.id == image_id))
+        document = result.scalars().first()
+        logger.info(f"Document found: {document}")
 
-    task = extract_text_from_image.delay(document.path, image_id)
-    return {
-        "message": "Text extraction task submitted",
-        "task_id": task.id,
-        "document_path": document.path,
-    }
+        if document is None:
+            logger.error(f"Document with image_id {image_id} not found")
+            raise HTTPException(status_code=404, detail="Document not found")
+
+        # Создание асинхронной задачи для извлечения текста из изображения
+        task = extract_text_from_image.delay(document.path, image_id)
+        logger.info(f"Task submitted: {task.id}")
+
+        # Явное закрытие сессии
+        await db.commit()
+        logger.info("Transaction committed")
+
+        logger.info("Returning response...")
+        return {
+            "message": "Text extraction task submitted",
+            "task_id": task.id,
+            "document_path": document.path,
+        }
+
+    except Exception as e:
+        logger.error(f"Error processing document analysis: {e}")
+        await db.rollback()  # Откат транзакции
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.get("/get_text")
