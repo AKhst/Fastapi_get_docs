@@ -1,8 +1,8 @@
 FROM python:3.12-slim
 
-RUN mkdir /fastapi_app
+RUN mkdir /app
 # Устанавливаем рабочую директорию в контейнере
-WORKDIR /fastapi_app
+WORKDIR /app
 
 COPY . .
 # Устанавливаем зависимости
