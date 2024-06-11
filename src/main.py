@@ -46,7 +46,6 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
-
 # Dependency to get DB session
 async def get_db() -> AsyncSession:
     async with AsyncSessionLocal() as session:
@@ -71,7 +70,7 @@ async def upload_doc(file: UploadFile = File(...), db: AsyncSession = Depends(ge
     new_doc = Document(path=file_path)
     db.add(new_doc)
     await db.commit()
-    await db.refresh(new_doc)
+    # await db.refresh(new_doc)
 
     return JSONResponse(
         status_code=200, content={"id": new_doc.id, "path": new_doc.path}
@@ -122,8 +121,7 @@ async def doc_analyse(request: DocumentAnalyse, db: AsyncSession = Depends(get_d
 
 
 @app.get("/get_text")
-async def get_text(request: DocumentBase, db: AsyncSession = Depends(get_db)):
-    doc_id = request.doc_id
+async def get_text(doc_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(DocumentsText).where(DocumentsText.id_doc == doc_id)
     )
@@ -133,5 +131,3 @@ async def get_text(request: DocumentBase, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Document text not found")
 
     return JSONResponse(status_code=200, content={"text": document_text.text})
-
-
