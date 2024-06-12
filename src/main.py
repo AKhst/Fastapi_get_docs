@@ -150,21 +150,32 @@ async def doc_analyse(request: DocumentAnalyse, db: AsyncSession = Depends(get_d
 @app.get("/get_text/{doc_id}")
 async def get_text(doc_id: int, db: AsyncSession = Depends(get_db)):
     try:
-        # Явное управление транзакцией
+        logger.info(f"Fetching document text for doc_id: {doc_id}")
         result = await db.execute(
             select(DocumentsText).where(DocumentsText.id_doc == doc_id)
         )
         document_text = result.scalars().first()
 
         if document_text is None:
+            logger.error(f"Document text not found for doc_id: {doc_id}")
             raise HTTPException(status_code=404, detail="Document text not found")
 
+        logger.info(f"Document text found for doc_id: {doc_id}")
+        # Явный коммит транзакции (необязательно, для улучшения читаемости кода)
+        await db.commit()
+
         return JSONResponse(status_code=200, content={"text": document_text.text})
+
     except SQLAlchemyError as e:
-        print(f"Database error: {e}")
+        logger.error(f"Database error: {e}")
+        await db.rollback()  # Откат транзакции в случае ошибки
         raise HTTPException(status_code=500, detail="Internal Server Error")
+
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logger.error(f"An error occurred: {e}")
+        await db.rollback()  # Откат транзакции в случае ошибки
         raise HTTPException(status_code=500, detail="Internal Server Error")
+
     finally:
         await db.close()
+        logger.info("Database session closed")
