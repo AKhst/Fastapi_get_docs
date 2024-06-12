@@ -4,6 +4,7 @@ import uuid
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from src.models import (
@@ -18,8 +19,15 @@ from src.schemas import (
     DocumentDelete,
     DocumentAnalyse,
     ALLOWED_EXTENSIONS,
-    DocumentBase,
 )
+import logging
+from sqlalchemy.exc import SQLAlchemyError
+
+logger = logging.getLogger("sqlalchemy.engine")
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s: %(message)s"))
+logger.addHandler(handler)
 
 
 # Функция для инициализации приложения при запуске
@@ -139,22 +147,27 @@ async def doc_analyse(request: DocumentAnalyse, db: AsyncSession = Depends(get_d
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@app.get("/get_text")
+@app.get("/get_text/{doc_id}")
 async def get_text(doc_id: int, db: AsyncSession = Depends(get_db)):
     try:
+        # Явное управление транзакцией
         result = await db.execute(
             select(DocumentsText).where(DocumentsText.id_doc == doc_id)
         )
         document_text = result.scalars().first()
 
         if document_text is None:
-            logger.error("Document text not found")
             raise HTTPException(status_code=404, detail="Document text not found")
 
         return JSONResponse(status_code=200, content={"text": document_text.text})
+
+    except SQLAlchemyError as e:
+        print(f"Database error: {e}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+
     except Exception as e:
-        logger.error(f"Error getting document text: {e}")
-        raise
+        print(f"An error occurred: {e}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+
     finally:
         await db.close()
-        logger.info("Session closed")
