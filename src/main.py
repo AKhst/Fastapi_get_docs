@@ -160,14 +160,11 @@ async def get_text(doc_id: int, db: AsyncSession = Depends(get_db)):
             raise HTTPException(status_code=404, detail="Document text not found")
 
         return JSONResponse(status_code=200, content={"text": document_text.text})
-
     except SQLAlchemyError as e:
         print(f"Database error: {e}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
-
     except Exception as e:
         print(f"An error occurred: {e}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
-
     finally:
         await db.close()
