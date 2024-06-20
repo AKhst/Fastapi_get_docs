@@ -9,8 +9,16 @@ class DocumentBase(BaseModel):
 
 
 class DocumentDelete(BaseModel):
-    doc_id: int = Field(..., example=1)
+    doc_id: int
+
+    # Пример необходимо передать через json_schema_extra
+    class Config:
+        json_schema_extra = {"example": {"doc_id": 1}}
 
 
 class DocumentAnalyse(BaseModel):
-    image_id: int = Field(..., example=1)
+    image_id: int
+
+    # Пример необходимо передать через json_schema_extra
+    class Config:
+        json_schema_extra = {"example": {"image_id": 1}}
