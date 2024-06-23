@@ -1,4 +1,6 @@
-from pydantic import BaseModel, Field
+from fastapi import Path
+from typing import Annotated
+from pydantic import BaseModel
 
 # Допустимые форматы файлов для pytesseract
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "tiff", "bmp", "gif"}
@@ -9,16 +11,7 @@ class DocumentBase(BaseModel):
 
 
 class DocumentDelete(BaseModel):
-    doc_id: int
-
-    # Пример необходимо передать через json_schema_extra
-    class Config:
-        json_schema_extra = {"example": {"doc_id": 1}}
-
-
-class DocumentAnalyse(BaseModel):
-    image_id: int
-
-    # Пример необходимо передать через json_schema_extra
-    class Config:
-        json_schema_extra = {"example": {"image_id": 1}}
+    doc_id: Annotated[
+        int,
+        Path(title="Document ID", description="The ID of the document to delete", ge=1),
+    ]

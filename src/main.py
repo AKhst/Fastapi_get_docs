@@ -2,7 +2,7 @@ import os
 import shutil
 import uuid
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Path
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -17,7 +17,6 @@ from src.models import (
 from src.tasks import extract_text_from_image, logger
 from src.schemas import (
     DocumentDelete,
-    DocumentAnalyse,
     ALLOWED_EXTENSIONS,
 )
 import logging
@@ -79,10 +78,18 @@ async def upload_doc(file: UploadFile = File(...), db: AsyncSession = Depends(ge
     )
 
 
-@app.delete("/doc_delete")
-async def delete_doc(request: DocumentDelete, db: AsyncSession = Depends(get_db)):
+@app.delete("/doc_delete/{doc_id}", response_model=dict)
+async def delete_docdelete_doc(
+    doc_id: int = Path(
+        ...,
+        title="Document ID",
+        description="The ID of the document to delete",
+        example=1,
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+
     try:
-        doc_id = request.doc_id
         result = await db.execute(select(Document).where(Document.id == doc_id))
         document = result.scalars().first()
 
@@ -111,9 +118,13 @@ async def delete_doc(request: DocumentDelete, db: AsyncSession = Depends(get_db)
 
 
 @app.post("/doc_analyse/{image_id}")
-async def doc_analyse(request: DocumentAnalyse, db: AsyncSession = Depends(get_db)):
+async def doc_analyse(
+    image_id: int = Path(
+        ..., title="Image ID", description="The ID of the image to analyze", example=1
+    ),
+    db: AsyncSession = Depends(get_db),
+):
     try:
-        image_id = request.image_id
         logger.info(f"Received request to analyze document with image_id: {image_id}")
 
         result = await db.execute(select(Document).where(Document.id == image_id))
