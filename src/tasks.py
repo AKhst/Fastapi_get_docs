@@ -4,6 +4,7 @@ import asyncio
 from dotenv import load_dotenv
 from celery import Celery
 import pytesseract
+
 from PIL import Image
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker

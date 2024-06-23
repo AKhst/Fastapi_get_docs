@@ -51,6 +51,11 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
+@app.get("/")
+async def read_root():
+    return {"message": "Hello World"}
+
+
 @app.post("/upload_doc")
 async def upload_doc(file: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
     file_extension = file.filename.split(".")[-1].lower()
@@ -84,7 +89,7 @@ async def delete_doc(
         ...,
         title="Document ID",
         description="The ID of the document to delete",
-        example=1,
+        examples=1,
     ),
     db: AsyncSession = Depends(get_db),
 ):
@@ -120,7 +125,7 @@ async def delete_doc(
 @app.post("/doc_analyse/{image_id}")
 async def doc_analyse(
     image_id: int = Path(
-        ..., title="Image ID", description="The ID of the image to analyze", example=1
+        ..., title="Image ID", description="The ID of the image to analyze", examples=1
     ),
     db: AsyncSession = Depends(get_db),
 ):
