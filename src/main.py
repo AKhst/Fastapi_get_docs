@@ -79,7 +79,7 @@ async def upload_doc(file: UploadFile = File(...), db: AsyncSession = Depends(ge
 
 
 @app.delete("/doc_delete/{doc_id}", response_model=dict)
-async def delete_docdelete_doc(
+async def delete_doc(
     doc_id: int = Path(
         ...,
         title="Document ID",
