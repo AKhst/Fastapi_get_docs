@@ -1,95 +1,126 @@
-# conftest.py
-
 import os
 import pytest
-from sqlalchemy import create_engine, text
-from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import sessionmaker
-from src.main import app
-from fastapi.testclient import TestClient
-from httpx import AsyncClient
 from dotenv import load_dotenv
-from src.models import Base
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
+from httpx import AsyncClient
+from src.main import app, get_db
+from src.models import Base, init_models
+from src.utils import cleanup_directory, create_test_file
+from celery import Celery
+from celery.contrib.testing.worker import start_worker
+from src.tasks import celery as celery_tasks
 
-# Load environment variables from .env.test file
-load_dotenv(dotenv_path=".env.test")
+load_dotenv("/Users/admin/PycharmProjects/Fastapi_get_docs/.test.env")
 
-# Retrieve database connection parameters from environment variables
-DB_HOST = os.getenv("DB_HOST")
-DB_PORT = os.getenv("DB_PORT")
-DB_USER = os.getenv("DB_USER")
-DB_PASS = os.getenv("DB_PASS")
-DB_NAME = os.getenv("DB_NAME")
+# Проверка наличия всех необходимых переменных окружения
+db_host = os.getenv("DB_HOST")
+db_port = os.getenv("DB_PORT")
+db_user = os.getenv("DB_USER")
+db_pass = os.getenv("DB_PASS")
+db_name = os.getenv("DB_NAME")
 
 # PostgreSQL's connection string for the test database
-DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+connection_string = (
+    f"postgresql+asyncpg://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
+)
 
-# Create SQLAlchemy engine for database operations
-test_engine = create_engine(DATABASE_URL)
-TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
+# Create SQLAlchemy async_engine for database operations
+async_engine = create_async_engine(connection_string, echo=True)
+
+# Database session factory
+AsyncSessionLocal = sessionmaker(
+    bind=async_engine, class_=AsyncSession, expire_on_commit=False
+)
+test_documents_dir = "/Users/admin/PycharmProjects/Fastapi_get_docs/test_documents"
+
+# Создание тестового файла
+file_path = create_test_file("test_file.txt", test_documents_dir)
+print(f"Created file: {file_path}")
+
+# Удаление содержимого директории после использования
+cleanup_directory(test_documents_dir)
+print(f"Cleaned up directory: {test_documents_dir}")
 
 
-def check_database_exists():
-    try:
-        with test_engine.connect() as conn:
-            sql_statement = text("SELECT 1 FROM pg_database WHERE datname=:dbname")
-            result = conn.execute(sql_statement, {"dbname": DB_NAME})
-            return result.fetchone() is not None
-    except OperationalError:
-        return False
-
-
-# Fixture to create the test database if it doesn't exist
 @pytest.fixture(scope="session")
-def create_test_database():
-    if not check_database_exists():
-        conn = test_engine.connect()
-        conn.execute(f"CREATE DATABASE {DB_NAME}")
-        conn.close()
+def celery_config():
+    return {
+        "broker_url": os.getenv("CELERY_BROKER_URL"),
+        "result_backend": os.getenv("CELERY_RESULT_BACKEND"),
+    }
 
-    Base.metadata.create_all(bind=test_engine)
+
+@pytest.fixture(scope="session")
+def celery_includes():
+    return ["src.tasks"]  # замените на ваш модуль с задачами Celery
+
+
+@pytest.fixture(scope="session")
+def celery_app(celery_config, celery_includes):
+    app = Celery(
+        "tasks",
+        broker=celery_config["broker_url"],
+        backend=celery_config["result_backend"],
+    )
+    app.conf.update(celery_config)
+    app.conf.update(
+        task_always_eager=True
+    )  # Запускаем задачи синхронно в тестовом режиме
+    app.autodiscover_tasks(celery_includes)
+
+    # Регистрируем стандартные задачи, включая ping
+    app.register_task(app.tasks["celery.ping"])
+
+    print(
+        f"Tasks registered: {app.tasks.keys()}"
+    )  # Вывод всех зарегистрированных задач
+    return app
+
+
+@pytest.fixture()
+def celery_worker(celery_app):
+    with start_worker(celery_app, ping_task=True) as worker:
+        yield worker
+
+
+# Ваши остальные фикстуры
+
+
+@pytest.fixture(scope="function")
+async def db():
+    async with AsyncSessionLocal() as session:
+        yield session
+
+
+@pytest.fixture(scope="session", autouse=True)
+async def initialize_test_database():
+    async with async_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+        await init_models()  # Ensure all models are initialized
+
+
+@pytest.fixture(scope="function", autouse=True)
+def setup_and_teardown_files():
+    # Create test files before each test
+    os.makedirs(test_documents_dir, exist_ok=True)
     yield
+    # Remove test files after each test
+    cleanup_directory(test_documents_dir)
 
-    Base.metadata.drop_all(bind=test_engine)
 
-
-# Fixture for creating a database session for tests
 @pytest.fixture(scope="function")
-def db_session(create_test_database):
-    connection = test_engine.connect()
-    transaction = connection.begin()
-    session = TestSessionLocal(bind=connection)
-    yield session
-    session.close()
-    transaction.rollback()
-    connection.close()
-
-
-# Fixture for testing with the FastAPI TestClient
-@pytest.fixture(scope="function")
-def client(db_session):
+async def async_client(db):
     def override_get_db():
         try:
-            yield db_session
+            yield db
         finally:
-            db_session.close()
+            db.close()
 
-    app.dependency_overrides[override_get_db] = override_get_db
-    with TestClient(app) as client:
-        yield client
-    app.dependency_overrides.clear()
-
-
-# Fixture for testing with the Async FastAPI TestClient
-@pytest.fixture(scope="function")
-async def async_client(db_session):
-    def override_get_db():
-        try:
-            yield db_session
-        finally:
-            db_session.close()
-
-    app.dependency_overrides[override_get_db] = override_get_db
+    app.dependency_overrides[get_db] = override_get_db
     async with AsyncClient(app=app, base_url="http://test") as ac:
         yield ac
     app.dependency_overrides.clear()
+
+
+print(f"postgresql+asyncpg://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}")

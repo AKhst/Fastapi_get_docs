@@ -16,7 +16,6 @@ from src.models import (
 )
 from src.tasks import extract_text_from_image, logger
 from src.schemas import (
-    DocumentDelete,
     ALLOWED_EXTENSIONS,
 )
 import logging

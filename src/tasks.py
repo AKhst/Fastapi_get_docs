@@ -4,7 +4,6 @@ import asyncio
 from dotenv import load_dotenv
 from celery import Celery
 import pytesseract
-
 from PIL import Image
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
@@ -64,7 +63,3 @@ async def extract_text(file_path, image_id):
 def extract_text_from_image(file_path, image_id):
     loop = asyncio.get_event_loop()
     return loop.run_until_complete(extract_text(file_path, image_id))
-
-
-# Вывести значение переменной окружения TESSDATA_PREFIX
-print("TESSDATA_PREFIX:", tessdata_prefix)

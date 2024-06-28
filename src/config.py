@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import create_async_engine
 
 # Load environment variables from the .env file
-load_dotenv()
+load_dotenv("/Users/admin/PycharmProjects/Fastapi_get_docs/.env")
 
 # Get environment variable values
 db_host = os.getenv("DB_HOST")
@@ -22,5 +22,4 @@ CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND")
 # Create asynchronous engine
 async_engine = create_async_engine(connection_string, echo=True)
 
-# Print connection string for verification
-print(connection_string)
+print(f"{db_user},{db_pass}, {db_host}, {db_port}, {db_name}")

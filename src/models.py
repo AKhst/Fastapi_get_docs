@@ -1,5 +1,7 @@
 import os
-from datetime import datetime
+from datetime import datetime, timezone
+
+import timestamp
 from sqlalchemy import ForeignKey, TIMESTAMP
 from sqlalchemy.orm import (
     DeclarativeBase,
@@ -30,7 +32,7 @@ class Document(Base):
     __tablename__ = "document"
     id: Mapped[int] = mapped_column(primary_key=True)
     path: Mapped[str] = mapped_column(nullable=False)
-    date: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.utcnow)
+    date: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now)
     text = relationship("DocumentsText", cascade="all, delete", backref="document")
 
 
