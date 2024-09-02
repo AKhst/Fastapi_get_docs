@@ -41,7 +41,7 @@ AsyncSessionLocal = sessionmaker(
 )
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="session")
 async def initialize_test_database():
     async with async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -85,13 +85,3 @@ def event_loop():
     loop = asyncio.get_event_loop_policy().new_event_loop()
     yield loop
     loop.close()
-
-
-# Create a test file
-file_path = create_test_file("test_file.txt", test_documents_dir)
-print(f"Created file: {file_path}")
-
-# Cleanup the directory after use
-cleanup_directory(test_documents_dir)
-print(f"Cleaned up directory: {test_documents_dir}")
-print(connection_string)

@@ -62,7 +62,7 @@ async def test_upload_doc(db: AsyncSession, initialize_test_database):
 
 @pytest.mark.asyncio
 async def test_delete_doc(db: AsyncSession, initialize_test_database):
-    # First, upload a document to delete later
+    # Создаем тестовый файл для загрузки
     file_path = create_test_file("test_image_to_delete.png", test_documents_dir)
 
     async for session in get_db():
